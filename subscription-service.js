@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SOURCE_URL = process.env.SOURCE_URL;
-const PORT = Number(process.env.PORT ?? 8080);
+const PORT = Number(process.env.PORT ?? process.env.SERVER_PORT ?? 8080);
 const UPDATE_INTERVAL_MINUTES = Number(process.env.UPDATE_INTERVAL_MINUTES ?? 30);
 const SCHEMES = process.env.SCHEMES ?? "vless,vmess,trojan,ss";
 const OUTPUT_DIR = process.env.OUTPUT_DIR ?? path.join(__dirname, "public");
