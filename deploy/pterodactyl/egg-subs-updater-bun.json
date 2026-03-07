@@ -10,10 +10,11 @@
   "description": "Serves auto-updated v2ray subscription files from SOURCE_URL using Bun runtime.",
   "features": null,
   "docker_images": {
-    "oven/bun:1.3.5-alpine": "oven/bun:1.3.5-alpine"
+    "Bun Latest": "ghcr.io/ptero-eggs/yolks:bun_latest",
+    "Bun Canary": "ghcr.io/ptero-eggs/yolks:bun_canary"
   },
   "file_denylist": [],
-  "startup": "if [ -d .git ] && [ \"{{AUTO_UPDATE}}\" = \"1\" ]; then git pull --ff-only || true; fi; bun run ./{{MAIN_FILE}}",
+  "startup": "bun run ./{{MAIN_FILE}}",
   "config": {
     "files": "{}",
     "startup": "{\"done\":\"\\\\[server\\\\] listening on\"}",
@@ -50,15 +51,6 @@
       "name": "User Upload",
       "description": "1 to skip git clone and use files already in root.",
       "env_variable": "USER_UPLOAD",
-      "default_value": "0",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|boolean"
-    },
-    {
-      "name": "Auto Update",
-      "description": "1 to run git pull on every server start.",
-      "env_variable": "AUTO_UPDATE",
       "default_value": "0",
       "user_viewable": true,
       "user_editable": true,
