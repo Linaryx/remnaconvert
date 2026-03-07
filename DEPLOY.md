@@ -83,6 +83,9 @@ docker run -d --name subs-updater \
 4. В Startup/Variables задай:
    - `REPO_URL` (например `https://github.com/<user>/<repo>.git`)
    - `REPO_BRANCH` (например `main`)
+   - `MAIN_FILE=subscription-service.js`
+   - `AUTO_UPDATE=0` (или `1`, если хочешь `git pull` при каждом старте)
+   - `USER_UPLOAD=0` (ставь `1`, если файлы грузишь вручную и без git)
    - `SOURCE_URL` (твоя oversub ссылка)
 5. Запусти сервер: install-скрипт сам скачает код из GitHub в `/home/container`.
 6. Проверь в консоли строку `"[server] listening on"`.
