@@ -1,0 +1,104 @@
+{
+  "_comment": "DO NOT EDIT: FILE GENERATED FOR MANUAL IMPORT INTO PTERODACTYL PANEL",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-03-07T00:00:00+00:00",
+  "name": "Subs Updater (Bun)",
+  "author": "local@codex",
+  "description": "Serves auto-updated v2ray subscription files from SOURCE_URL using Bun runtime.",
+  "features": null,
+  "docker_images": {
+    "Bun 1.3 (Alpine)": "oven/bun:1.3.5-alpine"
+  },
+  "file_denylist": [],
+  "startup": "PORT={{SERVER_PORT}} bun run /home/container/subscription-service.js",
+  "config": {
+    "files": "{}",
+    "startup": "{\"done\":\"\\\\[server\\\\] listening on\"}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/ash\nset -e\napk add --no-cache git ca-certificates >/dev/null\n: \"${REPO_URL:?REPO_URL is required}\"\nREPO_BRANCH=\"${REPO_BRANCH:-main}\"\nmkdir -p /mnt/server\nif [ -d /mnt/server/.git ]; then\n  cd /mnt/server\n  git fetch --depth=1 origin \"${REPO_BRANCH}\"\n  git reset --hard FETCH_HEAD\nelse\n  rm -rf /mnt/server/*\n  git clone --depth=1 --branch \"${REPO_BRANCH}\" \"${REPO_URL}\" /mnt/server\nfi\ncd /mnt/server\nif [ ! -f subscription-service.js ] || [ ! -f convert-oversub-to-v2ray.js ]; then\n  echo \"Missing required files in repo root: subscription-service.js, convert-oversub-to-v2ray.js\"\n  exit 1\nfi\necho \"Install complete from ${REPO_URL}#${REPO_BRANCH}\"\n",
+      "container": "alpine:3.20",
+      "entrypoint": "ash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Git Repository URL",
+      "description": "Public GitHub URL, ex: https://github.com/user/subs.git",
+      "env_variable": "REPO_URL",
+      "default_value": "https://github.com/Linaryx/remnaconvert.git",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:255"
+    },
+    {
+      "name": "Git Branch",
+      "description": "Branch to deploy from repository.",
+      "env_variable": "REPO_BRANCH",
+      "default_value": "main",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:64"
+    },
+    {
+      "name": "Source URL",
+      "description": "OverSub/RemnaWave subscription page URL.",
+      "env_variable": "SOURCE_URL",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:1000"
+    },
+    {
+      "name": "Update Interval Minutes",
+      "description": "How often files are refreshed.",
+      "env_variable": "UPDATE_INTERVAL_MINUTES",
+      "default_value": "30",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|between:1,1440"
+    },
+    {
+      "name": "Schemes",
+      "description": "Comma-separated protocols to include.",
+      "env_variable": "SCHEMES",
+      "default_value": "vless,vmess,trojan,ss",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:100"
+    },
+    {
+      "name": "Output Directory",
+      "description": "Directory for generated files.",
+      "env_variable": "OUTPUT_DIR",
+      "default_value": "/home/container/public",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:255"
+    },
+    {
+      "name": "Links File Name",
+      "description": "Plain links file path name.",
+      "env_variable": "LINKS_FILE",
+      "default_value": "v2ray_links.txt",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:100"
+    },
+    {
+      "name": "Base64 File Name",
+      "description": "Base64 subscription file path name.",
+      "env_variable": "B64_FILE",
+      "default_value": "v2ray_subscription.b64",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:100"
+    }
+  ]
+}

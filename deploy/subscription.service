@@ -1,0 +1,16 @@
+[Unit]
+Description=V2Ray subscription updater service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/subs
+EnvironmentFile=/opt/subs/.env
+ExecStart=/usr/local/bin/bun /opt/subs/subscription-service.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

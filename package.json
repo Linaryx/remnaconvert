@@ -1,0 +1,9 @@
+{
+  "name": "subs-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convert": "bun run ./convert-oversub-to-v2ray.js",
+    "start": "bun run ./subscription-service.js"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+public/
+*.log
+.env
+v2ray_links.txt
+v2ray_subscription.b64
