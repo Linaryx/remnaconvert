@@ -62,20 +62,8 @@ curl -s https://subs.example.com/healthz
 curl -s https://subs.example.com/v2ray_subscription.b64 | head
 ```
 
-## Вариант 2: контейнер (Docker/Pterodactyl)
+## Вариант 2: Pterodactyl egg
 
-Локально (или в ноде Pterodactyl) образ запускается так:
-```bash
-docker build -t subs-updater:latest .
-docker run -d --name subs-updater \
-  -p 8080:8080 \
-  -e SOURCE_URL="https://oversub.cloud/replace_me" \
-  -e UPDATE_INTERVAL_MINUTES=30 \
-  -e SCHEMES="vless,vmess,trojan,ss" \
-  subs-updater:latest
-```
-
-В Pterodactyl через egg:
 1. Импортируй файл:
    - `deploy/pterodactyl/egg-subs-updater-bun.json`
 2. Создай сервер на этом egg.
