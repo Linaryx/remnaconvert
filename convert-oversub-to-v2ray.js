@@ -2,10 +2,14 @@
 import { Buffer } from "node:buffer";
 import { writeFile } from "node:fs/promises";
 
+const DEFAULT_USER_AGENT = "v2rayN/7.22.3";
+
 function usage() {
   return [
     "Usage:",
-    "  bun run convert-oversub-to-v2ray.js <subscription_url> [--out-links v2ray_links.txt] [--out-b64 v2ray_subscription.b64] [--schemes vless,vmess,trojan,ss] [--user-agent Happ/1.0] [--hwid <uuid>] [--header Name=Value] [--print]",
+    "  bun run convert-oversub-to-v2ray.js <subscription_url> [--out-links v2ray_links.txt] [--out-b64 v2ray_subscription.b64] [--schemes vless,vmess,trojan,ss] [--user-agent v2rayN/7.22.3] [--hwid <uuid>] [--header Name=Value] [--print]",
+    "",
+    `Default User-Agent: ${DEFAULT_USER_AGENT}`,
     "",
     "Examples:",
     '  bun run convert-oversub-to-v2ray.js "https://example.com/sub/replace_me"',
@@ -111,13 +115,59 @@ function appendParam(params, key, value) {
   params.set(key, String(value));
 }
 
+function appendStreamParams(params, stream) {
+  appendParam(params, "type", stream.network ?? "tcp");
+  appendParam(params, "security", stream.security);
+
+  if (stream.security === "reality") {
+    appendParam(params, "sni", stream.realitySettings?.serverName);
+    appendParam(params, "pbk", stream.realitySettings?.publicKey);
+    appendParam(params, "sid", stream.realitySettings?.shortId);
+    appendParam(params, "spx", stream.realitySettings?.spiderX);
+    appendParam(params, "fp", stream.realitySettings?.fingerprint);
+  }
+
+  if (stream.security === "tls") {
+    appendParam(params, "sni", stream.tlsSettings?.serverName);
+    appendParam(params, "fp", stream.tlsSettings?.fingerprint);
+    if (Array.isArray(stream.tlsSettings?.alpn)) {
+      appendParam(params, "alpn", stream.tlsSettings.alpn.join(","));
+    }
+    if (stream.tlsSettings?.allowInsecure === true) {
+      appendParam(params, "allowInsecure", "1");
+      appendParam(params, "insecure", "1");
+    }
+  }
+
+  if (stream.network === "ws") {
+    appendParam(params, "path", stream.wsSettings?.path);
+    appendParam(params, "host", stream.wsSettings?.headers?.Host);
+  }
+
+  if (stream.network === "grpc") {
+    appendParam(params, "serviceName", stream.grpcSettings?.serviceName);
+    appendParam(params, "authority", stream.grpcSettings?.authority);
+    appendParam(params, "mode", stream.grpcSettings?.multiMode ? "multi" : undefined);
+  }
+
+  if (stream.network === "xhttp") {
+    appendParam(params, "path", stream.xhttpSettings?.path);
+    appendParam(params, "host", stream.xhttpSettings?.host);
+    appendParam(params, "mode", stream.xhttpSettings?.mode);
+  }
+
+  if (stream.network === "tcp") {
+    appendParam(params, "headerType", stream.tcpSettings?.header?.type);
+  }
+}
+
 function extractProxyOutbound(config) {
   if (!Array.isArray(config?.outbounds)) return null;
 
   return (
     config.outbounds.find((outbound) => outbound?.tag === "proxy") ??
     config.outbounds.find((outbound) =>
-      ["vless", "vmess", "trojan", "ss"].includes(
+      ["vless", "vmess", "trojan", "ss", "shadowsocks"].includes(
         outbound?.protocol?.toLowerCase?.(),
       ),
     ) ??
@@ -135,39 +185,34 @@ function vlessOutboundToLink(outbound, remarks) {
   appendParam(params, "flow", user.flow);
 
   const stream = outbound?.streamSettings ?? {};
-  appendParam(params, "type", stream.network ?? "tcp");
-  appendParam(params, "security", stream.security);
-
-  if (stream.security === "reality") {
-    appendParam(params, "sni", stream.realitySettings?.serverName);
-    appendParam(params, "pbk", stream.realitySettings?.publicKey);
-    appendParam(params, "sid", stream.realitySettings?.shortId);
-    appendParam(params, "spx", stream.realitySettings?.spiderX);
-    appendParam(params, "fp", stream.realitySettings?.fingerprint);
-  }
-
-  if (stream.network === "ws") {
-    appendParam(params, "path", stream.wsSettings?.path);
-    appendParam(params, "host", stream.wsSettings?.headers?.Host);
-  }
-
-  if (stream.network === "grpc") {
-    appendParam(params, "serviceName", stream.grpcSettings?.serviceName);
-    appendParam(params, "authority", stream.grpcSettings?.authority);
-  }
-
-  if (stream.network === "xhttp") {
-    appendParam(params, "path", stream.xhttpSettings?.path);
-    appendParam(params, "host", stream.xhttpSettings?.host);
-    appendParam(params, "mode", stream.xhttpSettings?.mode);
-  }
-
-  if (stream.network === "tcp") {
-    appendParam(params, "headerType", stream.tcpSettings?.header?.type);
-  }
+  appendStreamParams(params, stream);
 
   const label = encodeURIComponent(remarks || vnext.address);
   return `vless://${user.id}@${vnext.address}:${vnext.port}?${params.toString()}#${label}`;
+}
+
+function trojanOutboundToLink(outbound, remarks) {
+  const server = outbound?.settings?.servers?.[0];
+  if (!server?.address || !server?.port || !server?.password) return null;
+
+  const params = new URLSearchParams();
+  const stream = outbound?.streamSettings ?? {};
+  appendStreamParams(params, stream);
+
+  const label = encodeURIComponent(remarks || server.address);
+  return `trojan://${encodeURIComponent(server.password)}@${server.address}:${server.port}?${params.toString()}#${label}`;
+}
+
+function shadowsocksOutboundToLink(outbound, remarks) {
+  const server = outbound?.settings?.servers?.[0];
+  if (!server?.address || !server?.port || !server?.method || !server?.password) return null;
+
+  const credentials = Buffer.from(
+    `${server.method}:${server.password}`,
+    "utf8",
+  ).toString("base64");
+  const label = encodeURIComponent(remarks || server.address);
+  return `ss://${credentials}@${server.address}:${server.port}#${label}`;
 }
 
 function extractLinksFromJsonConfigs(bodyText) {
@@ -187,6 +232,14 @@ function extractLinksFromJsonConfigs(bodyText) {
       const protocol = outbound?.protocol?.toLowerCase?.();
       if (protocol === "vless") {
         return vlessOutboundToLink(outbound, config?.remarks);
+      }
+
+      if (protocol === "trojan") {
+        return trojanOutboundToLink(outbound, config?.remarks);
+      }
+
+      if (protocol === "shadowsocks" || protocol === "ss") {
+        return shadowsocksOutboundToLink(outbound, config?.remarks);
       }
 
       return null;
@@ -242,7 +295,7 @@ function buildRequestHeaders(argv) {
     accept: "*/*",
   };
 
-  const userAgent = getArgValue(argv, "--user-agent");
+  const userAgent = getArgValue(argv, "--user-agent") ?? DEFAULT_USER_AGENT;
   if (userAgent) headers["user-agent"] = userAgent;
 
   const hwid = getArgValue(argv, "--hwid");
